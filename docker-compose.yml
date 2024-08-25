@@ -1,0 +1,62 @@
+services:
+  # mysql
+  db:
+    image: mysql:8.0
+    ports:
+      - ${MYSQL_PORT}:3306
+    container_name: ${PROJECT_NAME}-mysql
+    volumes:
+      - ./mysql/volumes:/var/lib/mysql
+      - ./mysql/:/etc/mysql/conf.d
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    env_file: .env
+
+  # rabbitmq-dev:
+  #   image: rabbitmq:3.8-management
+  #   ports:
+  #     - ${RABBITMQ_MANAGEMENT_PORT}:15672
+  #   hostname: "rabbitmq-dev"
+  #   environment:
+  #     - RABBITMQ_DEFAULT_VHOST=vhost
+
+  django_app:
+    build:
+      context: ./
+      dockerfile: ./docker/django/Dockerfile
+    image: ${PROJECT_NAME}
+    container_name: ${PROJECT_NAME}-django
+    ports:
+      - ${DJANGO_PORT}:8000
+    volumes:
+      - ./apps:/var/www/django
+      - ./nginx:/etc/nginx/conf.d
+    # not run server by default on development
+    # you exec into this container and run server and so on ;)
+    # command: python3 manage.py runserver 0.0.0.0:8000
+    tty: true
+
+    environment:
+      - DJANGO_CONFIGURATION=LocalMySQL
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_NAME=db_dev
+      - DB_USERNAME=root
+      - DB_PASSWORD=${MYSQL_ROOT_PASSWORD}
+    command: /bin/bash
+    env_file: .env
+    depends_on:
+      - db
+      # - rabbitmq-dev
+
+  # mkdocs:
+  #   build:
+  #     context: ./
+  #     dockerfile: ./docker/mkdocs/Dockerfile
+  #   image: mkdocs
+  #   volumes:
+  #     - ./documents:/documents
+  #   ports:
+  #     - ${DOCS_PORT}:8000
+  #   env_file: .env
+  #   container_name: django-template-docs
